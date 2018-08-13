@@ -3,10 +3,10 @@ $(document).ready(function () {
     randomBtn.on('click', fillRandomPlanets)
 
     let system = new System();
-    $(document).on('mousedown', createPlanet);
+    $('#content').on('mousedown', createPlanet);
 
     function createPlanet(ev) {
-        $(document).off('mousedown');
+        $('#content').off('mousedown');
 
         let x = ev.clientX;
         let y = ev.clientY;
@@ -18,8 +18,8 @@ $(document).ready(function () {
             y: y
         });
 
-        $(document).on('mousemove', sizePlanet);
-        $(document).on('mouseup', addPlanet);
+        $('#content').on('mousemove', sizePlanet);
+        $('#content').on('mouseup', addPlanet);
 
         function sizePlanet(ev) {
             let vector = new Vector({ x: x, y: y }, { x: ev.clientX, y: ev.clientY });
@@ -32,13 +32,13 @@ $(document).ready(function () {
                 planet.mass = 500;
                 planet.setRadius();
             }
-            $(document).off('mouseup');
-            $(document).off('mousemove');
-            $(document).off('mousedown');
-            $(document).on('mousedown', startVelocity)
+            $('#content').off('mouseup');
+            $('#content').off('mousemove');
+            $('#content').off('mousedown');
+            $('#content').on('mousedown', startVelocity)
 
             function startVelocity(ev) {
-                $(document).off('mousedown');
+                $('#content').off('mousedown');
                 let line = $("<div class = 'rubber-band'>");
                 line.css('top', planet.y);
                 line.css('left', planet.x + 1);
@@ -46,8 +46,8 @@ $(document).ready(function () {
                 line.width(0);
                 $('#content').append(line);
 
-                $(document).on('mousemove', setVelocity);
-                $(document).on('mouseup', launchPlanet)
+                $('#content').on('mousemove', setVelocity);
+                $('#content').on('mouseup', launchPlanet)
 
                 function setVelocity(ev) {
                     let vector = new Vector(planet,
@@ -62,9 +62,9 @@ $(document).ready(function () {
 
 
                 function launchPlanet(ev) {
-                    $(document).off('mouseup');
-                    $(document).off('mousemove');
-                    $(document).off('mousedown');
+                    $('#content').off('mouseup');
+                    $('#content').off('mousemove');
+                    $('#content').off('mousedown');
 
                     line.remove();
 
@@ -78,7 +78,7 @@ $(document).ready(function () {
                     }
                     planet.v = v;
                     system.add(planet);
-                    $(document).on('mousedown', createPlanet);
+                    $('#content').on('mousedown', createPlanet);
                 }
             }
         }
@@ -98,7 +98,8 @@ $(document).ready(function () {
 
     system.add(sun);
 
-    function fillRandomPlanets() {
+    function fillRandomPlanets(ev) {
+        ev.stopPropagation();
         for (let p = 1; p < 500; p++) {
             system.add(new Planet({
                 name: `p${system.planets.length}`,
