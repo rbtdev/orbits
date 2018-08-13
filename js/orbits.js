@@ -143,11 +143,12 @@ function Vector(p1, p2) {
 class System {
     constructor() {
         this.planets = [];
-        this.G = .2
+        this.G = .3
         this.swallows = [];
         this.t = 0;
         this.collisions = 0;
         this.fastest = 0;
+        this.farthest = 0;
     }
 
 
@@ -160,6 +161,8 @@ class System {
             swallow.subject.swallow(swallow.object, swallow.vector);
         });
         this.swallows = [];
+        this.fastest = 0;
+        this.farthest = 0;
 
         this.planets.forEach((subject, i) => {
             let f = {
@@ -169,6 +172,7 @@ class System {
             this.planets.forEach((object, j) => {
                 if (i !== j) {
                     let V = new Vector(object, subject);
+                    if (V.mag > this.farthest) this.farthest = V.mag;
                     let minDistance = object.radius + subject.radius;
                     if (V.mag >= minDistance) {
                         let fMag = this.G * (subject.mass * object.mass) / (V.mag * V.mag);
@@ -208,7 +212,8 @@ class System {
             frames: this.t,
             planets: this.planets.length -1,
             collisions: this.collisions,
-            fastest: this.fastest.toFixed(3)
+            fastest: this.fastest.toFixed(3),
+            farthest: this.farthest.toFixed(3)
         }
         $('#data').text(JSON.stringify(data, null, 2));
         requestAnimationFrame(this.run.bind(this));
