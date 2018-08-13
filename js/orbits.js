@@ -100,14 +100,14 @@ $(document).ready(function () {
 
     function fillRandomPlanets(ev) {
         ev.stopPropagation();
-        for (let p = 1; p < 500; p++) {
+        for (let p = 1; p < 1000; p++) {
             system.add(new Planet({
                 name: `p${system.planets.length}`,
                 isMoveable: true,
-                mass: Math.random() * 100 + 1,
+                mass: Math.random() * 50 + 1,
                 v: {
-                    x: Math.random() * 40 - 20,
-                    y: Math.random() * 40 - 20
+                    x: Math.random() * 10 - 5,
+                    y: Math.random() * 10 - 5
                 },
                 x: Math.random() * $('#content').width(),
                 y: Math.random() * $('#content').height()
