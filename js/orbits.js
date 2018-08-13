@@ -1,4 +1,4 @@
-$(document).ready(function () { 
+$(document).ready(function () {     
     let system = new System();
 
     let randomBtn = $("#random-btn");
@@ -84,8 +84,8 @@ $(document).ready(function () {
                         y: planet.y - ev.clientY
                     }
                     let v = {
-                        x: Math.sign(mag.x) * Math.pow(Math.abs(mag.x), 1.2) / 75,
-                        y: Math.sign(mag.y) * Math.pow(Math.abs(mag.y), 1.2) / 75
+                        x: Math.sign(mag.x) * Math.pow(Math.abs(mag.x), 1.1) / 75,
+                        y: Math.sign(mag.y) * Math.pow(Math.abs(mag.y), 1.1) / 75
                     }
                     planet.v = v;
                     system.add(planet);
@@ -112,6 +112,7 @@ $(document).ready(function () {
 
     function fillRandomPlanets(ev) {
         ev.stopPropagation();
+        let vMax = 20
         for (let p = 1; p < 1000; p++) {
             system.add(new Planet({
                 name: `p${system.planets.length}`,
@@ -119,8 +120,8 @@ $(document).ready(function () {
                 isMoveable: true,
                 mass: Math.random() * 50 + 1,
                 v: {
-                    x: Math.random() * 10 - 5,
-                    y: Math.random() * 10 - 5
+                    x: Math.random() * 2*vMax - vMax,
+                    y: Math.random() * 2*vMax - vMax
                 },
                 x: Math.random() * $('#content').width(),
                 y: Math.random() * $('#content').height()
@@ -157,7 +158,7 @@ class System {
     constructor(_opts) {
         let opts = _opts || {}
         this.planets = opts.planets || [];
-        this.G = opts.G || .3
+        this.G = opts.G || .1
         this.swallows = [];
         this.t = 0;
         this.collisions = 0;
