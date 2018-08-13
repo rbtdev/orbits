@@ -1,4 +1,7 @@
 $(document).ready(function () {
+    let randomBtn = $("#random-btn");
+    randomBtn.on('click', fillRandomPlanets)
+
     let system = new System();
     $(document).on('mousedown', createPlanet);
 
@@ -95,19 +98,22 @@ $(document).ready(function () {
 
     system.add(sun);
 
-    // for (let p = 1; p < 0; p++) {
-    //     planets.push(new Planet({
-    //         name: `p${p}`,
-    //         isMoveable: true,
-    //         mass: Math.random() * 100 + 1,
-    //         v: {
-    //             x: Math.random() * 20 - 10,
-    //             y: Math.random() * 20 - 10
-    //         },
-    //         x: Math.random() * $('#content').width(),
-    //         y: Math.random() * $('#content').height()
-    //     }));
-    // }
+    function fillRandomPlanets() {
+        for (let p = 1; p < 500; p++) {
+            system.add(new Planet({
+                name: `p${system.planets.length}`,
+                isMoveable: true,
+                mass: Math.random() * 100 + 1,
+                v: {
+                    x: Math.random() * 40 - 20,
+                    y: Math.random() * 40 - 20
+                },
+                x: Math.random() * $('#content').width(),
+                y: Math.random() * $('#content').height()
+            }));
+        }
+    }
+
 
     system.run();
 })
@@ -140,7 +146,7 @@ class System {
         this.swallows = [];
         this.t = 0;
     }
-    
+
 
     add(planet) {
         this.planets.push(planet);
