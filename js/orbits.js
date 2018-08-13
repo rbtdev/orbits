@@ -5,6 +5,12 @@ $(document).ready(function () {
     let fixedSunInput = $("#fixed-sun-input");
     fixedSunInput.on('change', (ev) => {
         system.planets[0].isMoveable = !ev.target.checked;
+    });
+    let GInput = $("#g-constant-input");
+    GInput.val(system.G);
+    GInput.on('change', ev => {
+        system.G = parseFloat(ev.target.value) || system.G;
+        ev.target.value = system.G
     })
     randomBtn.on('click', fillRandomPlanets)
 
@@ -91,6 +97,7 @@ $(document).ready(function () {
 
     let sun = new Planet({
         name: 'Sun',
+        type: 'sun',
         isMoveable: false,
         mass: 20000,
         v: {
@@ -108,6 +115,7 @@ $(document).ready(function () {
         for (let p = 1; p < 1000; p++) {
             system.add(new Planet({
                 name: `p${system.planets.length}`,
+                type: 'water',
                 isMoveable: true,
                 mass: Math.random() * 50 + 1,
                 v: {
@@ -146,9 +154,10 @@ function Vector(p1, p2) {
 
 
 class System {
-    constructor() {
-        this.planets = [];
-        this.G = .3
+    constructor(_opts) {
+        let opts = _opts || {}
+        this.planets = opts.planets || [];
+        this.G = opts.G || .3
         this.swallows = [];
         this.t = 0;
         this.collisions = 0;
@@ -162,9 +171,7 @@ class System {
     }
 
     run() {
-        this.swallows.forEach(swallow => {
-            swallow.subject.swallow(swallow.object, swallow.vector);
-        });
+
         this.swallows = [];
         this.fastest = 0;
         this.farthest = 0;
@@ -179,7 +186,7 @@ class System {
                     let V = new Vector(object, subject);
                     if (V.mag > this.farthest) this.farthest = V.mag;
                     let minDistance = object.radius + subject.radius;
-                    if (V.mag >= minDistance) {
+                    if (V.mag > minDistance) {
                         let fMag = this.G * (subject.mass * object.mass) / (V.mag * V.mag);
                         f.x += -fMag * Math.cos(V.angle);
                         f.y += fMag * Math.sin(V.angle);
@@ -208,6 +215,10 @@ class System {
             subject.force = f;
         });
 
+        this.swallows.forEach(swallow => {
+            swallow.subject.swallow(swallow.object, swallow.vector);
+        });
+
         this.planets.forEach(planet => {
             planet.move();
             if (planet.speed > this.fastest) this.fastest = planet.speed;
@@ -230,6 +241,7 @@ class Planet {
         this.name = opts.name;
         this.isMoveable = opts.isMoveable;
         this.mass = opts.mass;
+        this.type = opts.type;
         this.v = opts.v;
         this.x = opts.x;
         this.y = opts.y;
@@ -237,7 +249,7 @@ class Planet {
             x: 0,
             y: 0
         }
-        this.div = $('<div class = "planet">');
+        this.div = $(`<div class = "planet ${this.type?this.type: ''}">`);
         this.setRadius();
         this.setPosition();
         $('#content').append(this.div);
