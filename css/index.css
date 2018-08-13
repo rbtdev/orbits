@@ -32,6 +32,9 @@ body {
     left: 0;
     z-index: 999999;
 }
+#data {
+    font-size: smaller;
+}
 .planet {
     position: absolute;
     border-radius: 50%;

@@ -146,6 +146,8 @@ class System {
         this.G = .2
         this.swallows = [];
         this.t = 0;
+        this.collisions = 0;
+        this.fastest = 0;
     }
 
 
@@ -173,6 +175,7 @@ class System {
                         f.x += -fMag * Math.cos(V.angle);
                         f.y += fMag * Math.sin(V.angle);
                     } else {
+                        this.collisions++;
                         if (object.mass >= subject.mass) {
 
                             this.swallows.push({
@@ -198,8 +201,16 @@ class System {
 
         this.planets.forEach(planet => {
             planet.move();
+            if (planet.speed > this.fastest) this.fastest = planet.speed;
         });
         this.t++
+        let data = {
+            frames: this.t,
+            planets: this.planets.length -1,
+            collisions: this.collisions,
+            fastest: this.fastest.toFixed(3)
+        }
+        $('#data').text(JSON.stringify(data, null, 2));
         requestAnimationFrame(this.run.bind(this));
     }
 }
@@ -253,7 +264,7 @@ class Planet {
                 x: this.v.x + a.x,
                 y: this.v.y + a.y
             }
-
+            this.speed = Math.sqrt(this.v.x*this.v.x + this.v.y*this.v.y);
             this.x = this.x + this.v.x;
             this.y = this.y + this.v.y;
             this.setPosition(this.x, this.y);
