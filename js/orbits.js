@@ -1,8 +1,13 @@
-$(document).ready(function () {
+$(document).ready(function () { 
+    let system = new System();
+
     let randomBtn = $("#random-btn");
+    let fixedSunInput = $("#fixed-sun-input");
+    fixedSunInput.on('change', (ev) => {
+        system.planets[0].isMoveable = !ev.target.checked;
+    })
     randomBtn.on('click', fillRandomPlanets)
 
-    let system = new System();
     $('#content').on('mousedown', createPlanet);
 
     function createPlanet(ev) {
