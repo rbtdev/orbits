@@ -140,6 +140,7 @@ class System {
         this.swallows = [];
         this.t = 0;
     }
+    
 
     add(planet) {
         this.planets.push(planet);
