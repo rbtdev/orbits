@@ -20,7 +20,7 @@ $(document).ready(function () {
     ScaleInput.val(system.scale);
     ScaleInput.on('input', ev => {
 
-        let scale = Math.min(1, 2/Math.pow(ev.target.value, 1.1));
+        let scale = Math.min(1, 5 / Math.pow(ev.target.value, 1.8));
         console.log(ev.target.value, scale)
         system.scale = scale;
     })
@@ -65,12 +65,12 @@ $(document).ready(function () {
             function startVelocity(ev) {
                 $('#content').off('mousedown');
                 let line = $("<div class = 'rubber-band'>");
-                let point = system.toScaled({
+                let origin = system.toScaled({
                     x: planet.x,
                     y: planet.y
                 })
-                line.css('top', point.y);
-                line.css('left', point.x + 1);
+                line.css('top', origin.y);
+                line.css('left', origin.x + 1);
                 line.height(0);
                 line.width(0);
                 $('#content').append(line);
@@ -79,12 +79,29 @@ $(document).ready(function () {
                 $('#content').on('mouseup', launchPlanet)
 
                 function setVelocity(ev) {
-                    let vector = new Vector(point,
+
+                    let vector = new Vector(origin,
                         {
                             x: ev.clientX,
                             y: ev.clientY
                         });
 
+                    let endPoint = system.fromScaled({
+                        x: ev.clientX,
+                        y: ev.clientY
+                    })
+
+                    let mag = {
+                        x: planet.x - endPoint.x,
+                        y: planet.y - endPoint.y
+                    }
+
+                    let v = {
+                        x: Math.sign(mag.x) * Math.pow(Math.abs(mag.x), 1.1) / 75,
+                        y: Math.sign(mag.y) * Math.pow(Math.abs(mag.y), 1.1) / 75
+                    }
+
+                    planet.v = v;
                     line.height(vector.mag);
                     line.css('transform', `rotate(${Math.PI / 2 - vector.angle}rad)`);
                 }
@@ -94,21 +111,7 @@ $(document).ready(function () {
                     $('#content').off('mouseup');
                     $('#content').off('mousemove');
                     $('#content').off('mousedown');
-
                     line.remove();
-                    let point = system.fromScaled({
-                        x: ev.clientX,
-                        y: ev.clientY
-                    })
-                    let mag = {
-                        x: planet.x - point.x,
-                        y: planet.y - point.y
-                    }
-                    let v = {
-                        x: Math.sign(mag.x) * Math.pow(Math.abs(mag.x), 1.1) / 75,
-                        y: Math.sign(mag.y) * Math.pow(Math.abs(mag.y), 1.1) / 75
-                    }
-                    planet.v = v;
                     system.add(planet);
                     $('#content').on('mousedown', createPlanet);
                 }
@@ -236,73 +239,30 @@ class System {
         }
     }
 
+
     run() {
         this.startTime = Date.now();
 
         requestAnimationFrame(render.bind(this));
 
         function render(timestamp) {
-            this.swallows = [];
             this.fastest = 0;
             this.farthest = {
-                V: {
+                vector: {
                     mag: 0
                 }
             };
 
             this.planets.forEach((subject, i) => {
-                let f = {
-                    x: 0,
-                    y: 0
-                }
-                this.planets.forEach((object, j) => {
-                    if (i !== j) {
-                        let V = new Vector(object, subject);
-                        if (V.mag > this.farthest.V.mag) {
-                            this.farthest = {
-                                V: V,
-                                x: object.x,
-                                y: object.y
-                            }
-                        }
-                        let minDistance = (object.radius + subject.radius);
-                        if (V.mag > minDistance) {
-                            let fMag = this.G * (subject.mass * object.mass) / (V.mag * V.mag);
-                            f.x += -fMag * Math.cos(V.angle);
-                            f.y += fMag * Math.sin(V.angle);
-                        } else {
-                            this.collisions++;
-                            if (object.mass >= subject.mass) {
-
-                                this.swallows.push({
-                                    subject: object,
-                                    object: this.planets.splice(i, 1)[0],
-                                    vector: V
-                                })
-
-                            }
-                            else {
-                                this.swallows.push({
-                                    object: this.planets.splice(j, 1)[0],
-                                    subject: subject,
-                                    vector: V
-                                })
-
-                            }
-                        }
-                    }
-                })
-                subject.force = f;
-            });
-
-            this.swallows.forEach(swallow => {
-                swallow.subject.swallow(swallow.object, swallow.vector);
+                subject.force = { x: 0, y: 0 }
+                this.addForces(subject, i, this.collide.bind(this));
             });
 
             this.planets.forEach(planet => {
                 planet.move();
                 if (planet.speed > this.fastest) this.fastest = planet.speed;
             });
+
             this.frame++
             let data = {
                 frames: this.frame,
@@ -315,6 +275,42 @@ class System {
             $('#data').text(JSON.stringify(data, null, 2));
             this.lastTimestamp = timestamp;
             requestAnimationFrame(render.bind(this));
+        }
+    }
+
+    addForces(subject, i, onCollision) {
+        this.planets.forEach((object, j) => {
+            if (subject != object) {
+                let vector = new Vector(object, subject);
+                if (vector.mag > this.farthest.vector.mag) {
+                    this.farthest = {
+                        vector: vector,
+                        x: object.x,
+                        y: object.y
+                    }
+                }
+                let minDistance = (object.radius + subject.radius);
+                if (vector.mag > minDistance) {
+                    let fMag = this.G * (subject.mass * object.mass) / (vector.mag * vector.mag);
+                    subject.force.x += -fMag * Math.cos(vector.angle);
+                    subject.force.y += fMag * Math.sin(vector.angle);
+                } else {
+                    onCollision(i, j, vector);
+                }
+            }
+        });
+    }
+
+    collide(i, j, vector) {
+        this.collisions++;
+        let subject = this.planets[i];
+        let object = this.planets[j];
+        if (subject.mass > object.mass) {
+            subject.swallow(object);
+            this.planets.splice(j, 1);
+        } else {
+            object.swallow(subject);
+            this.planets.splice(i, 1);
         }
     }
 }
@@ -343,7 +339,7 @@ class Planet {
 
     }
 
-    swallow(planet) {
+    swallow(planet, vector) {
         let m = {
             x: (this.mass * this.v.x) + (planet.mass * planet.v.x),
             y: (this.mass * this.v.y) + (planet.mass * planet.v.y)
