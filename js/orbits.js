@@ -18,9 +18,11 @@ $(document).ready(function () {
 
     let ScaleInput = $("#scale-input");
     ScaleInput.val(system.scale);
-    ScaleInput.on('change', ev => {
-        system.scale = parseFloat(ev.target.value) || system.scale;
-        ev.target.value = system.scale
+    ScaleInput.on('input', ev => {
+
+        let scale = Math.min(1, 2/Math.pow(ev.target.value, 1.1));
+        console.log(ev.target.value, scale)
+        system.scale = scale;
     })
 
     randomBtn.on('click', fillRandomPlanets)
@@ -46,7 +48,7 @@ $(document).ready(function () {
 
         function sizePlanet(ev) {
             let vector = new Vector(system.fromScaled({ x: x, y: y }), system.fromScaled({ x: ev.clientX, y: ev.clientY }));
-            planet.mass = Math.pow(vector.mag/3, 3);
+            planet.mass = Math.pow(vector.mag / 3, 3);
             planet.draw();
         }
 
@@ -139,7 +141,7 @@ $(document).ready(function () {
                 name: `p${system.planets.length}`,
                 type: 'water',
                 isMoveable: true,
-                mass: Math.random() * 50 + 1,
+                mass: Math.random() * 20 + 1,
                 v: {
                     x: Math.random() * 2 * vMax - vMax,
                     y: Math.random() * 2 * vMax - vMax
@@ -242,7 +244,11 @@ class System {
         function render(timestamp) {
             this.swallows = [];
             this.fastest = 0;
-            this.farthest = 0;
+            this.farthest = {
+                V: {
+                    mag: 0
+                }
+            };
 
             this.planets.forEach((subject, i) => {
                 let f = {
@@ -252,7 +258,13 @@ class System {
                 this.planets.forEach((object, j) => {
                     if (i !== j) {
                         let V = new Vector(object, subject);
-                        if (V.mag > this.farthest) this.farthest = V.mag;
+                        if (V.mag > this.farthest.V.mag) {
+                            this.farthest = {
+                                V: V,
+                                x: object.x,
+                                y: object.y
+                            }
+                        }
                         let minDistance = (object.radius + subject.radius);
                         if (V.mag > minDistance) {
                             let fMag = this.G * (subject.mass * object.mass) / (V.mag * V.mag);
@@ -298,7 +310,7 @@ class System {
                 planets: this.planets.length - 1,
                 collisions: this.collisions,
                 fastest: this.fastest.toFixed(3),
-                farthest: this.farthest.toFixed(3)
+                farthest: this.farthest
             }
             $('#data').text(JSON.stringify(data, null, 2));
             this.lastTimestamp = timestamp;

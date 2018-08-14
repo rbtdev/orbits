@@ -16,25 +16,27 @@
         <p> Launch as many planets as you like.</p>
 
         <div class='buttons'>
-            <div class = 'row'>
+            <div class='row'>
                 <button id='random-btn'>Random Planets</button>
             </div>
-            <div class = 'row'>
+            <div class='row'>
                 <span>Fixed Sun</span>
-                <input id = 'fixed-sun-input' type = 'checkbox' checked = 'true'/>
+                <input id='fixed-sun-input' type='checkbox' checked='true' />
             </div>
-            <div class = 'row'>
+            <div class='row'>
                 <span>Gravitational Constant</span>
-                <input id = 'g-constant-input'/>
+                <input id='g-constant-input' />
             </div>
 
-            <div class = 'row'>
-                    <span>Scale</span>
-                    <input id = 'scale-input'/>
+            <div class='row'>
+                <span>Scale</span>
+                <div class = 'slidercontainer'>
+                <input type="range" min="1" max="500" value="0" class="slider" id="scale-input">
                 </div>
+            </div>
         </div>
 
-        <pre id = 'data'></pre>
+        <pre id='data'></pre>
     </div>
 </body>
 <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
