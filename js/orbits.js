@@ -285,8 +285,8 @@ class System {
                 if (vector.mag > this.farthest.vector.mag) {
                     this.farthest = {
                         vector: vector,
-                        x: object.x,
-                        y: object.y
+                        origin: object.name,
+                        dest: subject.name
                     }
                 }
                 let minDistance = (object.radius + subject.radius);
