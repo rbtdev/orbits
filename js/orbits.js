@@ -1,5 +1,8 @@
-$(document).ready(function () {     
-    let system = new System();
+$(document).ready(function () {
+    let system = new System({
+        scale: 1,
+        G: .3
+    });
 
     let randomBtn = $("#random-btn");
     let fixedSunInput = $("#fixed-sun-input");
@@ -11,7 +14,15 @@ $(document).ready(function () {
     GInput.on('change', ev => {
         system.G = parseFloat(ev.target.value) || system.G;
         ev.target.value = system.G
+    });
+
+    let ScaleInput = $("#scale-input");
+    ScaleInput.val(system.scale);
+    ScaleInput.on('change', ev => {
+        system.scale = parseFloat(ev.target.value) || system.scale;
+        ev.target.value = system.scale
     })
+
     randomBtn.on('click', fillRandomPlanets)
 
     $('#content').on('mousedown', createPlanet);
@@ -22,6 +33,7 @@ $(document).ready(function () {
         let x = ev.clientX;
         let y = ev.clientY;
         let planet = new Planet({
+            system: system,
             name: `p${system.planets.length}`,
             isMoveable: true,
             mass: 0,
@@ -33,15 +45,15 @@ $(document).ready(function () {
         $('#content').on('mouseup', addPlanet);
 
         function sizePlanet(ev) {
-            let vector = new Vector({ x: x, y: y }, { x: ev.clientX, y: ev.clientY });
-            planet.mass = Math.pow(vector.mag * 2, 2)
-            planet.setRadius();
+            let vector = new Vector(system.fromScaled({ x: x, y: y }), system.fromScaled({ x: ev.clientX, y: ev.clientY }));
+            planet.mass = Math.pow(vector.mag/3, 3);
+            planet.draw();
         }
 
         function addPlanet(ev) {
             if (!planet.mass) {
                 planet.mass = 500;
-                planet.setRadius();
+                planet.draw();
             }
             $('#content').off('mouseup');
             $('#content').off('mousemove');
@@ -51,8 +63,12 @@ $(document).ready(function () {
             function startVelocity(ev) {
                 $('#content').off('mousedown');
                 let line = $("<div class = 'rubber-band'>");
-                line.css('top', planet.y);
-                line.css('left', planet.x + 1);
+                let point = system.toScaled({
+                    x: planet.x,
+                    y: planet.y
+                })
+                line.css('top', point.y);
+                line.css('left', point.x + 1);
                 line.height(0);
                 line.width(0);
                 $('#content').append(line);
@@ -61,7 +77,7 @@ $(document).ready(function () {
                 $('#content').on('mouseup', launchPlanet)
 
                 function setVelocity(ev) {
-                    let vector = new Vector(planet,
+                    let vector = new Vector(point,
                         {
                             x: ev.clientX,
                             y: ev.clientY
@@ -78,10 +94,13 @@ $(document).ready(function () {
                     $('#content').off('mousedown');
 
                     line.remove();
-
+                    let point = system.fromScaled({
+                        x: ev.clientX,
+                        y: ev.clientY
+                    })
                     let mag = {
-                        x: planet.x - ev.clientX,
-                        y: planet.y - ev.clientY
+                        x: planet.x - point.x,
+                        y: planet.y - point.y
                     }
                     let v = {
                         x: Math.sign(mag.x) * Math.pow(Math.abs(mag.x), 1.1) / 75,
@@ -96,6 +115,7 @@ $(document).ready(function () {
     }
 
     let sun = new Planet({
+        system: system,
         name: 'Sun',
         type: 'sun',
         isMoveable: false,
@@ -115,13 +135,14 @@ $(document).ready(function () {
         let vMax = 20
         for (let p = 1; p < 1000; p++) {
             system.add(new Planet({
+                system: system,
                 name: `p${system.planets.length}`,
                 type: 'water',
                 isMoveable: true,
                 mass: Math.random() * 50 + 1,
                 v: {
-                    x: Math.random() * 2*vMax - vMax,
-                    y: Math.random() * 2*vMax - vMax
+                    x: Math.random() * 2 * vMax - vMax,
+                    y: Math.random() * 2 * vMax - vMax
                 },
                 x: Math.random() * $('#content').width(),
                 y: Math.random() * $('#content').height()
@@ -158,102 +179,155 @@ class System {
     constructor(_opts) {
         let opts = _opts || {}
         this.planets = opts.planets || [];
-        this.G = opts.G || .1
+        this.G = opts.G || .3
         this.swallows = [];
-        this.t = 0;
+        this.frame = 0;
         this.collisions = 0;
         this.fastest = 0;
         this.farthest = 0;
+        this.scale = opts.scale || 1;
+        this.bounds = this.getBounds();
     }
 
+    getBounds() {
+        return {
+            x: {
+                min: 0,
+                max: $('#content').width(),
+                center: $('#content').width() / 2
+            },
+            y: {
+                min: 0,
+                max: $('#content').height(),
+                center: $('#content').height() / 2
+            }
+
+        }
+    }
 
     add(planet) {
         this.planets.push(planet);
     }
 
+    fromScaled(point) {
+        let x = point.x - this.bounds.x.center;
+        let y = point.y - this.bounds.y.center;
+        x = x / this.scale;
+        y = y / this.scale;
+        x += this.bounds.x.center;
+        y += this.bounds.y.center;
+        return {
+            x: x,
+            y: y
+        }
+    }
+    toScaled(point) {
+        let x = point.x - this.bounds.x.center;
+        let y = point.y - this.bounds.y.center;
+        x = x * this.scale;
+        y = y * this.scale;
+        x += this.bounds.x.center;
+        y += this.bounds.y.center;
+        return {
+            x: x,
+            y: y
+        }
+    }
+
     run() {
+        this.startTime = Date.now();
 
-        this.swallows = [];
-        this.fastest = 0;
-        this.farthest = 0;
+        requestAnimationFrame(render.bind(this));
 
-        this.planets.forEach((subject, i) => {
-            let f = {
-                x: 0,
-                y: 0
-            }
-            this.planets.forEach((object, j) => {
-                if (i !== j) {
-                    let V = new Vector(object, subject);
-                    if (V.mag > this.farthest) this.farthest = V.mag;
-                    let minDistance = object.radius + subject.radius;
-                    if (V.mag > minDistance) {
-                        let fMag = this.G * (subject.mass * object.mass) / (V.mag * V.mag);
-                        f.x += -fMag * Math.cos(V.angle);
-                        f.y += fMag * Math.sin(V.angle);
-                    } else {
-                        this.collisions++;
-                        if (object.mass >= subject.mass) {
+        function render(timestamp) {
+            this.swallows = [];
+            this.fastest = 0;
+            this.farthest = 0;
 
-                            this.swallows.push({
-                                subject: object,
-                                object: this.planets.splice(i, 1)[0],
-                                vector: V
-                            })
+            this.planets.forEach((subject, i) => {
+                let f = {
+                    x: 0,
+                    y: 0
+                }
+                this.planets.forEach((object, j) => {
+                    if (i !== j) {
+                        let V = new Vector(object, subject);
+                        if (V.mag > this.farthest) this.farthest = V.mag;
+                        let minDistance = (object.radius + subject.radius);
+                        if (V.mag > minDistance) {
+                            let fMag = this.G * (subject.mass * object.mass) / (V.mag * V.mag);
+                            f.x += -fMag * Math.cos(V.angle);
+                            f.y += fMag * Math.sin(V.angle);
+                        } else {
+                            this.collisions++;
+                            if (object.mass >= subject.mass) {
 
-                        }
-                        else {
-                            this.swallows.push({
-                                object: this.planets.splice(j, 1)[0],
-                                subject: subject,
-                                vector: V
-                            })
+                                this.swallows.push({
+                                    subject: object,
+                                    object: this.planets.splice(i, 1)[0],
+                                    vector: V
+                                })
 
+                            }
+                            else {
+                                this.swallows.push({
+                                    object: this.planets.splice(j, 1)[0],
+                                    subject: subject,
+                                    vector: V
+                                })
+
+                            }
                         }
                     }
-                }
-            })
-            subject.force = f;
-        });
+                })
+                subject.force = f;
+            });
 
-        this.swallows.forEach(swallow => {
-            swallow.subject.swallow(swallow.object, swallow.vector);
-        });
+            this.swallows.forEach(swallow => {
+                swallow.subject.swallow(swallow.object, swallow.vector);
+            });
 
-        this.planets.forEach(planet => {
-            planet.move();
-            if (planet.speed > this.fastest) this.fastest = planet.speed;
-        });
-        this.t++
-        let data = {
-            frames: this.t,
-            planets: this.planets.length -1,
-            collisions: this.collisions,
-            fastest: this.fastest.toFixed(3),
-            farthest: this.farthest.toFixed(3)
+            this.planets.forEach(planet => {
+                planet.move();
+                if (planet.speed > this.fastest) this.fastest = planet.speed;
+            });
+            this.frame++
+            let data = {
+                frames: this.frame,
+                fps: (1 / (timestamp - this.lastTimestamp) * 1000).toFixed(0),
+                planets: this.planets.length - 1,
+                collisions: this.collisions,
+                fastest: this.fastest.toFixed(3),
+                farthest: this.farthest.toFixed(3)
+            }
+            $('#data').text(JSON.stringify(data, null, 2));
+            this.lastTimestamp = timestamp;
+            requestAnimationFrame(render.bind(this));
         }
-        $('#data').text(JSON.stringify(data, null, 2));
-        requestAnimationFrame(this.run.bind(this));
     }
 }
 
 class Planet {
     constructor(opts) {
+        this.system = opts.system;
         this.name = opts.name;
         this.isMoveable = opts.isMoveable;
         this.mass = opts.mass;
         this.type = opts.type;
         this.v = opts.v;
-        this.x = opts.x;
-        this.y = opts.y;
+        let center = this.system.fromScaled({
+            x: opts.x,
+            y: opts.y
+        });
+        this.x = center.x;
+        this.y = center.y;
         this.force = {
             x: 0,
             y: 0
         }
-        this.div = $(`<div class = "planet ${this.type?this.type: ''}">`);
-        this.setRadius();
-        this.setPosition();
+        this.div = $(`<div class = "planet ${this.type ? this.type : ''}">`);
         $('#content').append(this.div);
+        this.draw()
 
     }
 
@@ -269,7 +343,7 @@ class Planet {
             y: m.y / this.mass
         }
         this.v = v;
-        this.setRadius();
+        this.draw();
         planet.remove();
     }
 
@@ -287,23 +361,26 @@ class Planet {
                 x: this.v.x + a.x,
                 y: this.v.y + a.y
             }
-            this.speed = Math.sqrt(this.v.x*this.v.x + this.v.y*this.v.y);
+            this.speed = Math.sqrt(this.v.x * this.v.x + this.v.y * this.v.y);
             this.x = this.x + this.v.x;
             this.y = this.y + this.v.y;
-            this.setPosition(this.x, this.y);
         }
+        this.draw();
+
     }
 
-    setPosition() {
-        this.div.css('top', this.y - this.radius);
-        this.div.css('left', this.x - this.radius);
-    }
-
-    setRadius() {
-        this.radius = Math.sqrt(this.mass) / 2;
-        this.div.width(this.radius * 2);
-        this.div.height(this.radius * 2);
-        this.setPosition();
+    draw() {
+        this.radius = Math.pow(this.mass, 1 / 3);
+        let scaledRadius = Math.max(.5, Math.round(this.radius * this.system.scale));
+        let scaledDiameter = scaledRadius * 2;
+        this.div.width(Math.round(scaledDiameter));
+        this.div.height(Math.round(scaledDiameter));
+        let center = this.system.toScaled({
+            x: this.x,
+            y: this.y
+        })
+        this.div.css('top', Math.round(center.y - scaledRadius));
+        this.div.css('left', Math.round(center.x - scaledRadius));
     }
 }
 
