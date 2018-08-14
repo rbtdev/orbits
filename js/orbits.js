@@ -10,10 +10,9 @@ $(document).ready(function () {
         system.planets[0].isMoveable = !ev.target.checked;
     });
     let GInput = $("#g-constant-input");
-    GInput.val(system.G);
-    GInput.on('change', ev => {
-        system.G = parseFloat(ev.target.value) || system.G;
-        ev.target.value = system.G
+    GInput.val(system.G * 100);
+    GInput.on('input', ev => {
+        system.G = ev.target.value / 100;
     });
 
     let ScaleInput = $("#scale-input");
@@ -39,6 +38,10 @@ $(document).ready(function () {
             name: `p${system.planets.length}`,
             isMoveable: true,
             mass: 0,
+            v: {
+                x: 0,
+                y: 0
+            },
             x: x,
             y: y
         });
