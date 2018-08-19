@@ -76,8 +76,8 @@ class Slider {
 class System {
     constructor(_opts) {
         let opts = _opts || {}
-        this.canvas = _opts.canvas;
-        this.pathCanvas = _opts.pathCanvas;
+        this.canvas = opts.canvas;
+        this.pathCanvas = opts.pathCanvas;
         this.ctx = this.canvas.getContext('2d');
         this.pathCtx = this.pathCanvas.getContext('2d');
         this.planets = opts.planets || [];
@@ -87,6 +87,7 @@ class System {
         this.collisions = 0;
         this.fastest = 0;
         this.farthest = 0;
+        this.timeScale = opts.timeScale || 1;
         this.scale = opts.scale || 1;
         this.bounds = this.getBounds();
     }
@@ -174,7 +175,7 @@ class System {
             }
             $('#data').text(JSON.stringify(this.data, null, 2));
             this.lastTimestamp = timestamp;
-            setTimeout(render.bind(this), 1000 / 40);
+            setTimeout(render.bind(this), 0);
         }
     }
 
@@ -214,12 +215,14 @@ class System {
 class Planet {
     constructor(_opts) {
         let opts = _opts || {};
-        opts.v = opts.v || {
+        this.system = opts.system;
+        this.v = opts.v || {
             x: 0,
             y: 0
         }
-        this.v = opts.v;
-        this.system = opts.system;
+        this.v.x = this.v.x * this.system.timeScale;
+        this.v.y = this.v.y * this.system.timeScale;
+
         this.name = opts.name | `p${this.system.planets.length}`,
             this.isMoveable = opts.isMoveable;
         this.mass = opts.mass;
@@ -277,15 +280,18 @@ class Planet {
                 y: this.force.y / this.mass
             }
             this.v = {
-                x: this.v.x + a.x,
-                y: this.v.y + a.y
+                x: this.v.x + a.x*this.system.timeScale,
+                y: this.v.y + a.y*this.system.timeScale
             }
-            this.speed = Math.sqrt(this.v.x * this.v.x + this.v.y * this.v.y);
-            this.x = this.x + this.v.x;
-            this.y = this.y + this.v.y;
+            this.x = this.x + this.v.x * this.system.timeScale;
+            this.y = this.y + this.v.y * this.system.timeScale;
         }
     }
 
+    get speed () {
+        return Math.sqrt(Math.pow(this.v.x*this.system.timeScale, 2)*Math.pow(this.v.y*this.system.timeScale,2));
+
+    }
     draw() {
         let center = this.system.toScaled({
             x: this.x,
@@ -360,7 +366,8 @@ $(document).ready(function () {
         scale: 1,
         G: .3,
         canvas: canvas[0],
-        pathCanvas: pathCanvas[0]
+        pathCanvas: pathCanvas[0],
+        timeScale: 1
     });
 
     let sun = null
@@ -381,6 +388,7 @@ $(document).ready(function () {
 
     system.add(sun);
 
+    $('#controls').height($('#content').innerHeight()-80)
     let autoScale = $("#auto-scale-btn");
     autoScale.on('click', () => {
         let width = Math.abs(system.data.farthest.origin.x - system.data.farthest.dest.x);
@@ -417,6 +425,17 @@ $(document).ready(function () {
         })
     }
 
+    let timeSlider = new Slider('time-scale-input', {
+        min: 1,
+        max: 100,
+        value: 1/system.timeScale
+    });
+    timeSlider.valueText = system.timeScale.toFixed(2);
+    timeSlider.on('input', ev => {
+        system.timeScale = 1/ev.target.value;
+        timeSlider.valueText = system.timeScale.toFixed(2);
+    })
+
     let gSlider = new Slider('g-constant-input', {
         min: 0,
         max: 100,
@@ -426,7 +445,6 @@ $(document).ready(function () {
     gSlider.on('input', ev => {
         system.G = maxG * (ev.target.value / 100);
         gSlider.valueText = system.G.toFixed(2);
-        console.log("G = " + system.G)
     })
 
     let scaleSlider = new Slider('scale-input', {
@@ -519,8 +537,8 @@ $(document).ready(function () {
                     }
 
                     let v = {
-                        x: Math.sign(mag.x) * Math.pow(Math.abs(mag.x), 1.1) / 30,
-                        y: Math.sign(mag.y) * Math.pow(Math.abs(mag.y), 1.1) / 30
+                        x:  (Math.sign(mag.x) * Math.pow(Math.abs(mag.x), 1.1) / 30),
+                        y:  (Math.sign(mag.y) * Math.pow(Math.abs(mag.y), 1.1) / 30)
                     }
 
                     planet.v = v;

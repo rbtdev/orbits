@@ -1,4 +1,5 @@
 body {
+    box-sizing: border-box;
     margin: 0px;
     padding: 0px;
     overflow: hidden;
@@ -33,6 +34,7 @@ canvas {
     top: 0;
     left: 0;
     z-index: 999999;
+    overflow-y: auto;
 }
 
 #controls input {
