@@ -20,14 +20,14 @@ function Vector(p1, p2) {
         x: p1.x,
         y: p1.y
     },
-    this.dest = {
-        x: p2.x,
-        y: p2.y
-    }
+        this.dest = {
+            x: p2.x,
+            y: p2.y
+        }
 }
 
 class Slider {
-    constructor (id, _settings) {
+    constructor(id, _settings) {
         let settings = _settings || {};
         this.min = settings.min || 0;
         this.max = settings.max || 100;
@@ -43,17 +43,17 @@ class Slider {
         this.setValue(this.value)
     }
 
-    on (event, cb) {
+    on(event, cb) {
         this.handlers[event] = cb;
     }
 
-    off (event) {
+    off(event) {
         delete this.handlers[event];
     }
 
-    setValue (v) {
+    setValue(v) {
         this.value = v;
-        this.valuePercent = this.value/this.max;
+        this.valuePercent = this.value / this.max;
     }
 
     get valueText() {
@@ -64,11 +64,11 @@ class Slider {
         this.sliderText.text(value);
         let sliderPos = this.value / this.max;
         let pixelPosition = this.slider.width() * sliderPos;
-        let pos = pixelPosition - (this.sliderText.width()/2);
+        let pos = pixelPosition - (this.sliderText.width() / 2);
         this.sliderText.css('left', pos)
     }
 
-    onInput (ev) {
+    onInput(ev) {
         this.setValue(ev.target.value);
         if (this.handlers['input']) this.handlers['input'](ev);
     }
@@ -76,6 +76,8 @@ class Slider {
 class System {
     constructor(_opts) {
         let opts = _opts || {}
+        this.canvas = _opts.canvas;
+        this.ctx = this.canvas.getContext('2d');
         this.planets = opts.planets || [];
         this.G = opts.G || .3
         this.swallows = [];
@@ -136,21 +138,26 @@ class System {
     run() {
         this.startTime = Date.now();
 
-        requestAnimationFrame(render.bind(this));
+        setTimeout(render.bind(this), 1000 / 25);
 
-        function render(timestamp) {
+        function render() {
+            let timestamp = Date.now();
             this.fastest = 0;
             this.farthest = {
                 mag: 0
             };
 
             this.planets.forEach((subject, i) => {
-                subject.force = { x: 0, y: 0 }
-                this.addForces(subject, i, this.collide.bind(this));
+                if (subject.isActive) {
+                    subject.force = { x: 0, y: 0 }
+                    this.addForces(subject, i, this.collide.bind(this));
+                }
             });
 
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
             this.planets.forEach(planet => {
-                planet.move();
+                if (planet.isActive) planet.move();
+                planet.draw();
                 if (planet.speed > this.fastest) this.fastest = planet.speed;
             });
 
@@ -165,13 +172,13 @@ class System {
             }
             $('#data').text(JSON.stringify(this.data, null, 2));
             this.lastTimestamp = timestamp;
-            requestAnimationFrame(render.bind(this));
+            setTimeout(render.bind(this), 1000 / 40);
         }
     }
 
     addForces(subject, i, onCollision) {
         this.planets.forEach((object, j) => {
-            if (subject != object) {
+            if (subject != object && object.isActive) {
                 let vector = new Vector(object, subject);
                 if (vector.mag > this.farthest.mag) {
                     this.farthest = vector
@@ -203,13 +210,18 @@ class System {
 }
 
 class Planet {
-    constructor(opts) {
+    constructor(_opts) {
+        let opts = _opts || {};
+        opts.v = opts.v || {
+            x: 0,
+            y: 0
+        }
+        this.v = opts.v;
         this.system = opts.system;
         this.name = opts.name | `p${this.system.planets.length}`,
-        this.isMoveable = opts.isMoveable;
+            this.isMoveable = opts.isMoveable;
         this.mass = opts.mass;
         this.type = opts.type;
-        this.v = opts.v;
         let center = this.system.fromScaled({
             x: opts.x,
             y: opts.y
@@ -220,8 +232,9 @@ class Planet {
             x: 0,
             y: 0
         }
-        this.div = $(`<div class = "planet ${this.type ? this.type : ''}">`);
-        $('#content').append(this.div);
+        this.isActive = _opts.isActive;
+        // this.div = $(`<div class = "planet ${this.type ? this.type : ''}">`);
+        // $('#content').append(this.div);
         this.draw()
 
     }
@@ -243,10 +256,18 @@ class Planet {
     }
 
     remove() {
-        this.div.css('display', 'none');
+        let center = this.system.toScaled({
+            x: this.x,
+            y: this.y
+        })
+        this.system.ctx.fillStyle = '#000000';
+        this.system.ctx.beginPath();
+        this.system.ctx.arc(center.x, center.y, this.radius + 1, 0, 2 * Math.PI);
+        this.system.ctx.fill();
     }
 
     move() {
+        //this.remove();
         if (this.isMoveable) {
             let a = {
                 x: this.force.x / this.mass,
@@ -260,39 +281,81 @@ class Planet {
             this.x = this.x + this.v.x;
             this.y = this.y + this.v.y;
         }
-        this.draw();
-
     }
 
     draw() {
-        this.radius = Math.pow(this.mass, 1 / 3);
-        let scaledRadius = Math.max(.5, Math.round(this.radius * this.system.scale));
-        let scaledDiameter = scaledRadius * 2;
-        this.div.width(Math.round(scaledDiameter));
-        this.div.height(Math.round(scaledDiameter));
         let center = this.system.toScaled({
             x: this.x,
             y: this.y
         })
-        this.div.css('top', Math.round(center.y - scaledRadius));
-        this.div.css('left', Math.round(center.x - scaledRadius));
+        this.system.ctx.fillStyle = '#ffffff';
+        this.system.ctx.beginPath();
+        this.system.ctx.arc(center.x, center.y, this.scaledRadius, 0, 2 * Math.PI);
+        this.system.ctx.fill();
+    }
+
+    get mass() {
+        return this._mass
+    }
+    set mass(m) {
+        this._mass = m;
+        this.radius = Math.pow(this.mass, 1 / 3);
+    }
+
+    get scaledRadius() {
+        return Math.max(.5, Math.round(this.radius * this.system.scale));
+
     }
 }
 
+
 $(document).ready(function () {
+
+
+
+    function fillRandomPlanets(ev) {
+        ev.stopPropagation();
+        let vMax = 5;
+        for (let p = 1; p < 1000; p++) {
+            system.add(new Planet({
+                system: system,
+                type: 'water',
+                isMoveable: true,
+                isActive: true,
+                mass: Math.random() * 0 + 1,
+                v: {
+                    x: Math.random() * 2 * vMax - vMax,
+                    y: Math.random() * 2 * vMax - vMax
+                },
+                x: Math.random() * $('#content').width(),
+                y: Math.random() * $('#content').height()
+            }));
+        }
+    }
+
+    let content = $('#content');
+    let canvas = $('<canvas>');
+    content.append(canvas);
+    let width = content.width();
+    let height = content.height();
+    canvas.attr('width', width);
+    canvas.attr('height', height);
 
     let maxG = 3;
     let MAX_SUN_SIZE = 100000;
     let system = new System({
         scale: 1,
-        G: .3
+        G: .3,
+        canvas: canvas[0]
     });
 
-    let sun = new Planet({
+    let sun = null
+    sun = new Planet({
         system: system,
         name: 'Sun',
         type: 'sun',
         isMoveable: false,
+        isActive: true,
         mass: 20000,
         v: {
             x: 0,
@@ -308,8 +371,8 @@ $(document).ready(function () {
     autoScale.on('click', () => {
         let width = Math.abs(system.data.farthest.origin.x - system.data.farthest.dest.x);
         let height = Math.abs(system.data.farthest.origin.y - system.data.farthest.dest.y);
-        let xScale = system.bounds.x.max/width;
-        let yScale = system.bounds.y.max/height;
+        let xScale = system.bounds.x.max / width;
+        let yScale = system.bounds.y.max / height;
         let scale = Math.min(xScale, yScale);
         system.scale = scale;
     })
@@ -320,23 +383,25 @@ $(document).ready(function () {
         system.planets[0].isMoveable = !ev.target.checked;
     });
 
-    let sunMassSlider = new Slider('sun-mass-slider', {
-        min: 0,
-        max: 1000,
-        value: 1000 * sun.mass/MAX_SUN_SIZE
-    });
-    sunMassSlider.valueText = sun.mass;
+    if (sun) {
+        let sunMassSlider = new Slider('sun-mass-slider', {
+            min: 0,
+            max: 1000,
+            value: 1000 * sun.mass / MAX_SUN_SIZE
+        });
+        sunMassSlider.valueText = sun.mass;
 
-    sunMassSlider.on('input', ev => {
-        sun.mass = MAX_SUN_SIZE * (ev.target.value / 1000);
-        sunMassSlider.valueText = Math.round(sun.mass);
-        sun.draw();
-    })
+        sunMassSlider.on('input', ev => {
+            sun.mass = MAX_SUN_SIZE * (ev.target.value / 1000);
+            sunMassSlider.valueText = Math.round(sun.mass);
+            sun.draw();
+        })
+    }
 
     let gSlider = new Slider('g-constant-input', {
         min: 0,
         max: 100,
-        value: 100 * system.G/maxG
+        value: 100 * system.G / maxG
     });
     gSlider.valueText = system.G.toFixed(2);
     gSlider.on('input', ev => {
@@ -369,7 +434,8 @@ $(document).ready(function () {
         let planet = new Planet({
             system: system,
             isMoveable: true,
-            mass: 0,
+            isActive: false,
+            mass: 300,
             v: {
                 x: 0,
                 y: 0
@@ -377,6 +443,8 @@ $(document).ready(function () {
             x: x,
             y: y
         });
+        system.add(planet);
+
 
         $('#content').on('mousemove', sizePlanet);
         $('#content').on('mouseup', addPlanet);
@@ -384,7 +452,7 @@ $(document).ready(function () {
         function sizePlanet(ev) {
             let vector = new Vector(system.fromScaled({ x: x, y: y }), system.fromScaled({ x: ev.clientX, y: ev.clientY }));
             planet.mass = Math.pow(vector.mag / 3, 3);
-            planet.draw();
+            //planet.draw();
         }
 
         function addPlanet(ev) {
@@ -432,8 +500,8 @@ $(document).ready(function () {
                     }
 
                     let v = {
-                        x: Math.sign(mag.x) * Math.pow(Math.abs(mag.x), 1.1) / 75,
-                        y: Math.sign(mag.y) * Math.pow(Math.abs(mag.y), 1.1) / 75
+                        x: Math.sign(mag.x) * Math.pow(Math.abs(mag.x), 1.1) / 30,
+                        y: Math.sign(mag.y) * Math.pow(Math.abs(mag.y), 1.1) / 30
                     }
 
                     planet.v = v;
@@ -447,32 +515,12 @@ $(document).ready(function () {
                     $('#content').off('mousemove');
                     $('#content').off('mousedown');
                     line.remove();
-                    system.add(planet);
+                    planet.isActive = true;
                     $('#content').on('mousedown', createPlanet);
                 }
             }
         }
     }
-
-    function fillRandomPlanets(ev) {
-        ev.stopPropagation();
-        let vMax = 10;
-        for (let p = 1; p < 1000; p++) {
-            system.add(new Planet({
-                system: system,
-                type: 'water',
-                isMoveable: true,
-                mass: Math.random() * 20+ 1,
-                v: {
-                    x: Math.random() * 2 * vMax - vMax,
-                    y: Math.random() * 2 * vMax - vMax
-                },
-                x: Math.random() * $('#content').width(),
-                y: Math.random() * $('#content').height()
-            }));
-        }
-    }
-
 
     system.run();
 })
