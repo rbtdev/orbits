@@ -81,6 +81,7 @@ class System {
         this.ctx = this.canvas.getContext('2d');
         this.pathCtx = this.pathCanvas.getContext('2d');
         this.planets = opts.planets || [];
+        this.showTrails = opts.showTrails;
         this.G = opts.G || .3
         this.swallows = [];
         this.frame = 0;
@@ -90,6 +91,19 @@ class System {
         this.timeScale = opts.timeScale || 1;
         this.scale = opts.scale || 1;
         this.bounds = this.getBounds();
+    }
+
+    set showTrails (checked) {
+        this._showTrails = checked;
+        if (checked) {
+            $(this.pathCanvas).show();
+        } else {
+            $(this.pathCanvas).hide();
+        }
+    }
+
+    get showTrails () {
+        return this._showTrails
     }
 
     getBounds() {
@@ -220,8 +234,6 @@ class Planet {
             x: 0,
             y: 0
         }
-        this.v.x = this.v.x * this.system.timeScale;
-        this.v.y = this.v.y * this.system.timeScale;
 
         this.name = opts.name | `p${this.system.planets.length}`,
             this.isMoveable = opts.isMoveable;
@@ -279,17 +291,18 @@ class Planet {
                 x: this.force.x / this.mass,
                 y: this.force.y / this.mass
             }
+
             this.v = {
                 x: this.v.x + a.x*this.system.timeScale,
                 y: this.v.y + a.y*this.system.timeScale
             }
-            this.x = this.x + this.v.x * this.system.timeScale;
-            this.y = this.y + this.v.y * this.system.timeScale;
+            this.x = this.x + (this.v.x * this.system.timeScale)/2;
+            this.y = this.y + (this.v.y * this.system.timeScale)/2;
         }
     }
 
     get speed () {
-        return Math.sqrt(Math.pow(this.v.x*this.system.timeScale, 2)*Math.pow(this.v.y*this.system.timeScale,2));
+        return Math.sqrt(Math.pow(this.v.x, 2)*Math.pow(this.v.y,2));
 
     }
     draw() {
@@ -367,7 +380,8 @@ $(document).ready(function () {
         G: .3,
         canvas: canvas[0],
         pathCanvas: pathCanvas[0],
-        timeScale: 1
+        timeScale: .5,
+        showTrails: false
     });
 
     let sun = null
@@ -388,6 +402,22 @@ $(document).ready(function () {
 
     system.add(sun);
 
+    let p = null
+    p = new Planet({
+        system: system,
+        isMoveable: true,
+        isActive: true,
+        mass: 300,
+        v: {
+            x: 0,
+            y: -4
+        },
+        x: $('#content').width()*.66,
+        y: $('#content').height() / 2
+    });
+
+    system.add(p);
+
     $('#controls').height($('#content').innerHeight()-80)
     let autoScale = $("#auto-scale-btn");
     autoScale.on('click', () => {
@@ -402,6 +432,12 @@ $(document).ready(function () {
     let clearTrailsBtn = $('#clear-trails-btn');
     clearTrailsBtn.on('click', ev => {
         system.pathCtx.clearRect(0, 0, system.pathCanvas.width, system.pathCanvas.height);
+    })
+
+    let showTrailsInput = $('#show-trails-input');
+    showTrailsInput.attr('checked', system.showTrails);
+    showTrailsInput.on('change', ev => {
+        system.showTrails = ev.target.checked;
     })
 
     let randomBtn = $("#random-btn");
@@ -537,8 +573,8 @@ $(document).ready(function () {
                     }
 
                     let v = {
-                        x:  (Math.sign(mag.x) * Math.pow(Math.abs(mag.x), 1.1) / 30),
-                        y:  (Math.sign(mag.y) * Math.pow(Math.abs(mag.y), 1.1) / 30)
+                        x:  (Math.sign(mag.x) * Math.pow(Math.abs(mag.x), 1.1) / 30) * planet.system.timeScale,
+                        y:  (Math.sign(mag.y) * Math.pow(Math.abs(mag.y), 1.1) / 10) * planet.system.timeScale
                     }
 
                     planet.v = v;
