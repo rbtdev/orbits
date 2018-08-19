@@ -402,21 +402,21 @@ $(document).ready(function () {
 
     system.add(sun);
 
-    let p = null
-    p = new Planet({
-        system: system,
-        isMoveable: true,
-        isActive: true,
-        mass: 300,
-        v: {
-            x: 0,
-            y: -4
-        },
-        x: $('#content').width()*.66,
-        y: $('#content').height() / 2
-    });
+    // let p = null
+    // p = new Planet({
+    //     system: system,
+    //     isMoveable: true,
+    //     isActive: true,
+    //     mass: 300,
+    //     v: {
+    //         x: 0,
+    //         y: -4
+    //     },
+    //     x: $('#content').width()*.66,
+    //     y: $('#content').height() / 2
+    // });
 
-    system.add(p);
+    // system.add(p);
 
     $('#controls').height($('#content').innerHeight()-80)
     let autoScale = $("#auto-scale-btn");
