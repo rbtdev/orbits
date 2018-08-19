@@ -77,7 +77,9 @@ class System {
     constructor(_opts) {
         let opts = _opts || {}
         this.canvas = _opts.canvas;
+        this.pathCanvas = _opts.pathCanvas;
         this.ctx = this.canvas.getContext('2d');
+        this.pathCtx = this.pathCanvas.getContext('2d');
         this.planets = opts.planets || [];
         this.G = opts.G || .3
         this.swallows = [];
@@ -233,6 +235,7 @@ class Planet {
             y: 0
         }
         this.isActive = _opts.isActive;
+        this.positions = [];
         // this.div = $(`<div class = "planet ${this.type ? this.type : ''}">`);
         // $('#content').append(this.div);
         this.draw()
@@ -288,10 +291,16 @@ class Planet {
             x: this.x,
             y: this.y
         })
+
         this.system.ctx.fillStyle = '#ffffff';
         this.system.ctx.beginPath();
         this.system.ctx.arc(center.x, center.y, this.scaledRadius, 0, 2 * Math.PI);
         this.system.ctx.fill();
+
+        this.system.pathCtx.fillStyle = '#666666';
+        this.system.pathCtx.beginPath();
+        this.system.pathCtx.arc(center.x, center.y, 1, 0, 2 * Math.PI);
+        this.system.pathCtx.fill();
     }
 
     get mass() {
@@ -335,18 +344,23 @@ $(document).ready(function () {
 
     let content = $('#content');
     let canvas = $('<canvas>');
+    let pathCanvas = $('<canvas>');
     content.append(canvas);
+    content.append(pathCanvas);
     let width = content.width();
     let height = content.height();
     canvas.attr('width', width);
     canvas.attr('height', height);
+    pathCanvas.attr('width', width);
+    pathCanvas.attr('height', height);
 
     let maxG = 3;
-    let MAX_SUN_SIZE = 100000;
+    let MAX_SUN_SIZE = 10000000;
     let system = new System({
         scale: 1,
         G: .3,
-        canvas: canvas[0]
+        canvas: canvas[0],
+        pathCanvas: pathCanvas[0]
     });
 
     let sun = null
@@ -375,6 +389,11 @@ $(document).ready(function () {
         let yScale = system.bounds.y.max / height;
         let scale = Math.min(xScale, yScale);
         system.scale = scale;
+    })
+
+    let clearTrailsBtn = $('#clear-trails-btn');
+    clearTrailsBtn.on('click', ev => {
+        system.pathCtx.clearRect(0, 0, system.pathCanvas.width, system.pathCanvas.height);
     })
 
     let randomBtn = $("#random-btn");
